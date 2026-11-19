@@ -1,32 +1,25 @@
 #include "random_utils.h"
+#include "config.h"
 #include <random>
-
-// TODO (Маша): Настрой std::mt19937 и std::random_device.
-// Реализуй функции.
-
-namespace {
-    //инициализация генератора псевдослучайных чисел вихрь мерсенна
-    std::mt19937 g_gen;
-}
-
+#include <stdexcept>
+#include <cmath>
+namespace { std::mt19937 generator; }
+void init_random(unsigned seed) { generator.seed(seed); }
 void init_random() {
-    //настройка сид-генератора через аппаратное случайное число
-    std::random_device rd;
-    g_gen.seed(rd());
+    if (USE_FIXED_SEED) init_random(FIXED_SEED);
+    else init_random(std::random_device{}());
 }
-
 bool check_probability(double probability) {
-    //создание равномерного распределения вещественных чисел от нуля до единицы
-    std::uniform_real_distribution<double> dis(0.0, 1.0);
-    //возврат истины если сгенерированное число попало в диапазон вероятности
-    return dis(g_gen) < probability;
+    if (!std::isfinite(probability) || probability < 0 || probability > 1)
+        throw std::invalid_argument("Probability must be in [0, 1]");
+    return std::bernoulli_distribution(probability)(generator);
 }
-
 int get_random_int(int max_val) {
-    //проверка корректности переданного максимального значения индекса
-    if (max_val <= 0) return 0;
-    //генерация случайного целого числа для выбора пользователя
-    std::uniform_int_distribution<int> dis(0, max_val);
-    return dis(g_gen);
+    if (max_val < 0) throw std::invalid_argument("Negative random bound");
+    return std::uniform_int_distribution<int>(0, max_val)(generator);
 }
-
+int get_random_recipient(int sender) {
+    if (sender < 0 || sender >= TOTAL_USERS) throw std::invalid_argument("Invalid sender");
+    const int recipient = get_random_int(TOTAL_USERS - 2);
+    return recipient >= sender ? recipient + 1 : recipient;
+}
