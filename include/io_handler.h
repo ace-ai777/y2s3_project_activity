@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
+#include <vector>
 #include "statistics.h"
-
-void append_stats_to_csv(double probability, const FinalStats& stats, const std::string& filename);
-void print_summary(double probability, const FinalStats& stats);
+bool write_daily_csv(const std::string&, const std::vector<double>&, const std::vector<FinalStats>&);
+bool write_summary_csv(const std::string&, const std::vector<double>&, const std::vector<FinalStats>&);
+bool write_runs_csv(const std::string&, const std::vector<double>&,
+                    const std::vector<std::vector<SimulationResult>>&);
