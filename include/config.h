@@ -24,7 +24,7 @@ constexpr unsigned FIXED_SEED = 12345;  // используется, если US
 constexpr int  DAYS_PER_BLOCK = 10;     // дней в одной консольной таблице (30 дней -> 3 блока по 10)
 constexpr int  CONSOLE_DECIMALS = 1;      // знаков после запятой в консоли
 constexpr bool UNICODE_BORDERS = false;  // false: +---+ и |  (работает везде); true: ┌──┐ и │ (красивее, нужен UTF-8)
-constexpr const char* NO_DATA = "—";    // вместо числа, если его нет (например, «средний день» при 0 успешных запусков)
+constexpr const char* NO_DATA = "не достигнуто";    // вместо числа, если его нет (например, «средний день» при 0 успешных запусков)
 
 // ===== 5. CSV для Excel =====================================================
 constexpr const char* CSV_DAILY_FILE = "results_daily.csv";    // среднее по дням (для графика)
@@ -52,3 +52,5 @@ static_assert(NUM_PROBABILITIES >= 1, "PROBABILITIES must not be empty");
 static_assert(DAYS_PER_BLOCK >= 1, "DAYS_PER_BLOCK must be at least 1");
 static_assert(!(CSV_DECIMAL_COMMA&& CSV_DELIMITER == ','),
     "CSV: decimal comma conflicts with ',' as delimiter");
+
+constexpr const char* CSV_RUNS_FILE = "results_runs.csv";

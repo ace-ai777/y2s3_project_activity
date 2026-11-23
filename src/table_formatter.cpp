@@ -69,19 +69,12 @@ namespace {
         return ss.str();
     }
 
-    // Число для CSV: нужное число знаков и (если задано в config.h) десятичная запятая.
-    std::string csvNumber(double v) {
-        std::string s = fmt(v, CSV_DECIMALS);
-        if (CSV_DECIMAL_COMMA) std::replace(s.begin(), s.end(), '.', ',');
-        return s;
-    }
-
     // Заголовки итоговой таблицы строятся из констант, чтобы при смене config.h подписи не врали.
     std::string avgFinalTitle() { return "Среднее на " + toStr(SIMULATION_DAYS) + "-й день"; }
     std::string reachedTitle() { return "Запусков ≥" + toStr(REACH_TARGET); }
     std::string avgDayTitle() { return "Средний день ≥" + toStr(REACH_TARGET); }
 
-    double percentReached(const FinalStats& s) { return 100.0 * s.runs_reached_100 / RUNS_COUNT; }
+    double percentReached(const FinalStats& s) { return s.percent_reached_100; }
     bool   hasReachDay(const FinalStats& s) { return s.runs_reached_100 > 0 && s.avg_day_reached_100 >= 0.0; }
 
     // ============================================================================
@@ -170,37 +163,6 @@ namespace {
         out << hLine(widths, b.bl, b.bm, b.br) << '\n';
     }
 
-    // ============================================================================
-    // CSV
-    // ============================================================================
-    std::string csvCell(const std::string& s) {
-        if (s.find(CSV_DELIMITER) == std::string::npos &&
-            s.find('"') == std::string::npos && s.find('\n') == std::string::npos)
-            return s;
-        std::string q = "\"";
-        for (std::size_t i = 0; i < s.size(); ++i) {
-            if (s[i] == '"') q += '"';
-            q += s[i];
-        }
-        return q + "\"";
-    }
-
-    bool writeGridCsv(const std::string& path, const Grid& grid) {
-        // binary: строки заканчиваем «\r\n» сами, одинаково на любой ОС
-        std::ofstream f(path.c_str(), std::ios::binary);
-        if (!f) return false;
-        if (CSV_WRITE_BOM) f << "\xEF\xBB\xBF";   // UTF-8 BOM
-        for (std::size_t r = 0; r < grid.size(); ++r) {
-            for (std::size_t c = 0; c < grid[r].size(); ++c) {
-                if (c > 0) f << CSV_DELIMITER;
-                f << csvCell(grid[r][c]);
-            }
-            f << "\r\n";
-        }
-        f.flush();
-        return f.good();
-    }
-
 #ifdef _WIN32
     UINT g_oldOutputCp = 0;
     void restoreConsole() {
@@ -228,7 +190,7 @@ void print_pretty_table(double probability, const FinalStats& stats) {
 
     out << "\nВероятность: " << label << '\n';   // заголовок вида «Вероятность: 10%»
     out << "\nСреднее число осведомлённых пользователей по дням (среднее по "
-        << RUNS_COUNT << " запускам)\n";
+        << stats.runs_count << " запускам)\n";
 
     // --- по дням, блоками ---
     const std::size_t days = static_cast<std::size_t>(SIMULATION_DAYS);
@@ -269,51 +231,7 @@ void print_pretty_table(double probability, const FinalStats& stats) {
 
     out << "\nИтоги\n";
     printGrid(out, summary, aligns);
-    out << "Запусков на вероятность: " << RUNS_COUNT << ". «" << reachedTitle()
+    out << "Запусков на вероятность: " << stats.runs_count << ". «" << reachedTitle()
         << "» — сколько запусков дошли хотя бы до " << REACH_TARGET << " человек; «"
         << avgDayTitle() << "» усредняется только по ним.\n";
-}
-
-bool write_daily_csv(const std::string& path,
-    const std::vector<double>& probabilities,
-    const std::vector<FinalStats>& stats) {
-    const std::size_t n = std::min(probabilities.size(), stats.size());
-
-    Grid grid;
-    Row header;
-    header.push_back("День");
-    for (std::size_t i = 0; i < n; ++i)
-        header.push_back("Вероятность " + probabilityLabel(probabilities[i]));
-    grid.push_back(header);
-
-    for (int d = 0; d < SIMULATION_DAYS; ++d) {
-        Row row;
-        row.push_back(toStr(d + 1));
-        for (std::size_t i = 0; i < n; ++i)
-            row.push_back(csvNumber(stats[i].avg_informed_per_day[d]));
-        grid.push_back(row);
-    }
-    return writeGridCsv(path, grid);
-}
-
-bool write_summary_csv(const std::string& path,
-    const std::vector<double>& probabilities,
-    const std::vector<FinalStats>& stats) {
-    const std::size_t n = std::min(probabilities.size(), stats.size());
-
-    Grid grid;
-    grid.push_back({ "Вероятность", avgFinalTitle(), reachedTitle(),
-                    "Доля запусков ≥" + toStr(REACH_TARGET) + ", %",
-                    "Средний день достижения " + toStr(REACH_TARGET),
-                    "Всего запусков" });
-    for (std::size_t i = 0; i < n; ++i) {
-        const FinalStats& s = stats[i];
-        grid.push_back({ probabilityLabel(probabilities[i]),
-                        csvNumber(s.avg_informed_per_day[SIMULATION_DAYS - 1]),
-                        toStr(s.runs_reached_100),
-                        csvNumber(percentReached(s)),
-                        hasReachDay(s) ? csvNumber(s.avg_day_reached_100) : std::string(NO_DATA),
-                        toStr(RUNS_COUNT) });
-    }
-    return writeGridCsv(path, grid);
 }
